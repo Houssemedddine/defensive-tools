@@ -1,0 +1,22 @@
+# Defensive Cybersecurity Multi-Tool Requirements
+# Core GUI framework - included with Python
+tkinter
+
+# Network and system libraries - included with Python standard library
+socket
+threading
+ipaddress
+hashlib
+os
+time
+re
+collections
+
+# Note: This tool uses only Python standard library modules for maximum compatibility
+# No additional pip installations required for basic functionality
+
+# Optional enhancements (uncomment if needed):
+# requests>=2.25.1        # For enhanced web requests
+# scapy>=2.4.5           # For advanced network analysis
+# psutil>=5.8.0          # For system monitoring
+# colorama>=0.4.4        # For colored terminal output
