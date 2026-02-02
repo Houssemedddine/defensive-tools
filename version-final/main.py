@@ -56,6 +56,7 @@ try:
     from tools.password import password_strength, strengthen_password
     from tools.aes_tool import encrypt_file, decrypt_file, AesResult
     from tools.breach_checker import BreachChecker
+    from tools.steganography import SteganographyTool
 except ImportError:
     # Fallback mock classes if tools aren't available
     class NetworkScanner:
@@ -385,6 +386,7 @@ class CyberSecurityTool:
         self.port_scanner = PortScanner()
         self.hash_verifier = HashVerifier()
         self.breach_checker = BreachChecker()
+        self.steganography_tool = SteganographyTool()
         
         # Session management
         self.session_data = {
@@ -694,7 +696,8 @@ class CyberSecurityTool:
             ("🔑 Password Tool", 4),
             ("🧱 AES Encryption", 5),
             ("🔒 Breach Checker", 6),
-            ("📊 Charts", 7)
+            ("📊 Charts", 7),
+            ("🕵️ Steganography", 8)
         ]
         
         self.sidebar_buttons = []
@@ -844,6 +847,7 @@ class CyberSecurityTool:
         self.create_breach_checker_tab_hd()
         # Charts tab: Breach visualizations
         self.create_charts_tab_hd()
+        self.create_steganography_tab_hd()
         
         
         # Bind tab change event
@@ -2342,6 +2346,347 @@ class CyberSecurityTool:
 
     
 
+
+
+
+    def create_aes_encryption_tab_hd(self):
+        """Create AES encryption tab with file/folder encryption support"""
+        frame = tk.Frame(self.notebook, bg=self.colors['dark']['bg'])
+        self.notebook.add(frame, text="🧱 AES Encryption")
+        
+        # Main content
+        content_frame = tk.Frame(frame, bg=self.colors['dark']['bg'])
+        content_frame.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Two columns: Encrypt (Left), Decrypt (Right)
+        left_col = tk.Frame(content_frame, bg=self.colors['dark']['bg'])
+        left_col.pack(side='left', fill='both', expand=True, padx=(0, 10))
+        
+        right_col = tk.Frame(content_frame, bg=self.colors['dark']['bg'])
+        right_col.pack(side='left', fill='both', expand=True, padx=(10, 0))
+        
+        # --- ENCRYPT SECTION ---
+        enc_card = self.create_card(left_col, "Encrypt File/Folder")
+        enc_card.pack(fill='both', expand=True)
+        
+        enc_params = tk.Frame(enc_card, bg=self.colors['dark']['card_bg'])
+        enc_params.pack(fill='x', padx=20, pady=20)
+        
+        # Input selection
+        tk.Label(enc_params, text="Select Input:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        input_row = tk.Frame(enc_params, bg=self.colors['dark']['card_bg'])
+        input_row.pack(fill='x', pady=(5, 15))
+        
+        self.aes_enc_input_entry = self.create_hd_entry(input_row)
+        self.aes_enc_input_entry.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        
+        btn_row = tk.Frame(input_row, bg=self.colors['dark']['card_bg'])
+        btn_row.pack(side='left')
+        
+        self.create_hd_button(btn_row, "📄 File", self.browse_aes_enc_file, accent=False).pack(side='left', padx=2)
+        self.create_hd_button(btn_row, "📁 Folder", self.browse_aes_enc_folder, accent=False).pack(side='left', padx=2)
+        
+        # Password
+        tk.Label(enc_params, text="Password:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        self.aes_enc_password_entry = self.create_hd_entry(enc_params)
+        self.aes_enc_password_entry.configure(show="*")
+        self.aes_enc_password_entry.pack(fill='x', pady=(5, 20))
+        
+        # Action
+        self.create_hd_button(enc_card, "🔒 Encrypt", self.run_aes_encrypt, accent=True).pack(fill='x', padx=20, pady=20)
+        
+        # --- DECRYPT SECTION ---
+        dec_card = self.create_card(right_col, "Decrypt File/Folder")
+        dec_card.pack(fill='both', expand=True)
+        
+        dec_params = tk.Frame(dec_card, bg=self.colors['dark']['card_bg'])
+        dec_params.pack(fill='x', padx=20, pady=20)
+        
+        # Encrypted file
+        tk.Label(dec_params, text="Encrypted File (.aes):", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        dec_input_row = tk.Frame(dec_params, bg=self.colors['dark']['card_bg'])
+        dec_input_row.pack(fill='x', pady=(5, 15))
+        
+        self.aes_dec_input_entry = self.create_hd_entry(dec_input_row)
+        self.aes_dec_input_entry.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        
+        self.create_hd_button(dec_input_row, "Browse", self.browse_aes_dec_file, accent=False).pack(side='left')
+        
+        # Password
+        tk.Label(dec_params, text="Password:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        self.aes_dec_password_entry = self.create_hd_entry(dec_params)
+        self.aes_dec_password_entry.configure(show="*")
+        self.aes_dec_password_entry.pack(fill='x', pady=(5, 20))
+        
+        # Action
+        self.create_hd_button(dec_card, "🔓 Decrypt", self.run_aes_decrypt, accent=True).pack(fill='x', padx=20, pady=20)
+        
+        # Results area (shared)
+        results_card = self.create_card(content_frame, "Results")
+        results_card.pack(fill='both', expand=True, padx=0, pady=(10, 0))
+        
+        self.aes_results = scrolledtext.ScrolledText(results_card, height=8, font=("Consolas", 10),
+                                                     bg=self.colors['dark']['bg'], fg=self.colors['dark']['text_primary'])
+        self.aes_results.pack(fill='both', expand=True, padx=20, pady=20)
+
+    # AES Logic Methods
+    def browse_aes_enc_file(self):
+        path = filedialog.askopenfilename(title="Select File to Encrypt")
+        if path:
+            self.aes_enc_input_entry.delete(0, tk.END)
+            self.aes_enc_input_entry.insert(0, path)
+
+    def browse_aes_enc_folder(self):
+        path = filedialog.askdirectory(title="Select Folder to Encrypt")
+        if path:
+            self.aes_enc_input_entry.delete(0, tk.END)
+            self.aes_enc_input_entry.insert(0, path)
+
+    def browse_aes_dec_file(self):
+        path = filedialog.askopenfilename(title="Select Encrypted File", filetypes=[("AES Files", "*.aes"), ("All", "*.*")])
+        if path:
+            self.aes_dec_input_entry.delete(0, tk.END)
+            self.aes_dec_input_entry.insert(0, path)
+
+    def run_aes_encrypt(self):
+        input_path = self.aes_enc_input_entry.get().strip()
+        password = self.aes_enc_password_entry.get().strip()
+        
+        if not input_path or not password:
+            messagebox.showerror("Error", "Please provide input and password.")
+            return
+        
+        is_folder = os.path.isdir(input_path)
+        
+        self.start_hd_spinner()
+        self.update_hd_status("🔒 Encrypting...")
+        self.aes_results.delete("1.0", tk.END)
+        
+        def encrypt_thread():
+            try:
+                res = encrypt_file(input_path, password, is_folder=is_folder)
+                if res.success:
+                    self.root.after(0, lambda: self.aes_results.insert(tk.END, res.message))
+                    self.root.after(0, lambda: self.update_dashboard_activity(f"AES: Encrypted {os.path.basename(input_path)}"))
+                    self.root.after(0, lambda: messagebox.showinfo("Success", "Encryption completed!"))
+                else:
+                    self.root.after(0, lambda: messagebox.showerror("Error", res.message))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("Error", str(e)))
+            finally:
+                self.root.after(0, lambda: self.stop_hd_spinner())
+                self.root.after(0, lambda: self.update_hd_status("🟢 Ready"))
+        
+        threading.Thread(target=encrypt_thread, daemon=True).start()
+
+    def run_aes_decrypt(self):
+        input_path = self.aes_dec_input_entry.get().strip()
+        password = self.aes_dec_password_entry.get().strip()
+        
+        if not input_path or not password:
+            messagebox.showerror("Error", "Please provide encrypted file and password.")
+            return
+        
+        self.start_hd_spinner()
+        self.update_hd_status("🔓 Decrypting...")
+        self.aes_results.delete("1.0", tk.END)
+        
+        def decrypt_thread():
+            try:
+                res = decrypt_file(input_path, password)
+                if res.success:
+                    self.root.after(0, lambda: self.aes_results.insert(tk.END, res.message))
+                    self.root.after(0, lambda: self.update_dashboard_activity(f"AES: Decrypted {os.path.basename(input_path)}"))
+                    self.root.after(0, lambda: messagebox.showinfo("Success", "Decryption completed!"))
+                else:
+                    self.root.after(0, lambda: messagebox.showerror("Error", res.message))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("Error", str(e)))
+            finally:
+                self.root.after(0, lambda: self.stop_hd_spinner())
+                self.root.after(0, lambda: self.update_hd_status("🟢 Ready"))
+        
+        threading.Thread(target=decrypt_thread, daemon=True).start()
+
+    def create_steganography_tab_hd(self):
+        """Create steganography tab with 2-column layout (Hide/Extract)"""
+        frame = tk.Frame(self.notebook, bg=self.colors['dark']['bg'])
+        self.notebook.add(frame, text="🕵️ Steganography")
+        
+        # Main content
+        content_frame = tk.Frame(frame, bg=self.colors['dark']['bg'])
+        content_frame.pack(fill='both', expand=True, padx=15, pady=15)
+        
+        # Two columns: Hide (Left), Extract (Right)
+        left_col = tk.Frame(content_frame, bg=self.colors['dark']['bg'])
+        left_col.pack(side='left', fill='both', expand=True, padx=(0, 10))
+        
+        right_col = tk.Frame(content_frame, bg=self.colors['dark']['bg'])
+        right_col.pack(side='left', fill='both', expand=True, padx=(10, 0))
+        
+        # --- HIDE SECTION ---
+        hide_card = self.create_card(left_col, "Hide Message (Encode)")
+        hide_card.pack(fill='both', expand=True)
+        
+        hide_params = tk.Frame(hide_card, bg=self.colors['dark']['card_bg'])
+        hide_params.pack(fill='x', padx=20, pady=20)
+        
+        # Source Image
+        tk.Label(hide_params, text="Source Image:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        src_row = tk.Frame(hide_params, bg=self.colors['dark']['card_bg'])
+        src_row.pack(fill='x', pady=(5, 15))
+        
+        self.stego_src_entry = self.create_hd_entry(src_row)
+        self.stego_src_entry.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        
+        self.create_hd_button(src_row, "Browse", self.browse_stego_source, accent=False).pack(side='left')
+        
+        # Message
+        tk.Label(hide_params, text="Secret Message:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        self.stego_msg_text = scrolledtext.ScrolledText(hide_params, height=5, font=("Consolas", 10),
+                                                       bg=self.colors['dark']['bg'], fg=self.colors['dark']['text_primary'])
+        self.stego_msg_text.pack(fill='x', pady=(5, 15))
+        
+        # Output Path
+        tk.Label(hide_params, text="Output Image (PNG):", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        out_row = tk.Frame(hide_params, bg=self.colors['dark']['card_bg'])
+        out_row.pack(fill='x', pady=(5, 20))
+        
+        self.stego_out_entry = self.create_hd_entry(out_row)
+        self.stego_out_entry.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        
+        self.create_hd_button(out_row, "Browse", self.browse_stego_output, accent=False).pack(side='left')
+        
+        # Action
+        self.create_hd_button(hide_card, "🔒 Hide Message", self.run_hide_message, accent=True).pack(fill='x', padx=20, pady=20)
+        
+        # --- EXTRACT SECTION ---
+        ext_card = self.create_card(right_col, "Extract Message (Decode)")
+        ext_card.pack(fill='both', expand=True)
+        
+        ext_params = tk.Frame(ext_card, bg=self.colors['dark']['card_bg'])
+        ext_params.pack(fill='x', padx=20, pady=20)
+        
+        # Target Image
+        tk.Label(ext_params, text="Encoded Image:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w')
+        
+        tgt_row = tk.Frame(ext_params, bg=self.colors['dark']['card_bg'])
+        tgt_row.pack(fill='x', pady=(5, 15))
+        
+        self.stego_tgt_entry = self.create_hd_entry(tgt_row)
+        self.stego_tgt_entry.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        
+        self.create_hd_button(tgt_row, "Browse", self.browse_stego_target, accent=False).pack(side='left')
+        
+        # Action
+        self.create_hd_button(ext_params, "🔓 Extract Message", self.run_extract_message, accent=True).pack(fill='x', pady=(10, 0))
+        
+        # Results
+        tk.Label(ext_card, text="Extracted Content:", font=("Segoe UI", 10, "bold"), 
+                 fg=self.colors['dark']['accent'], bg=self.colors['dark']['card_bg']).pack(anchor='w', padx=20, pady=(10, 5))
+        
+        self.stego_results = scrolledtext.ScrolledText(ext_card, height=10, font=("Consolas", 10),
+                                                      bg=self.colors['dark']['bg'], fg=self.colors['dark']['text_primary'])
+        self.stego_results.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+
+    # Steganography Logic
+    def browse_stego_source(self):
+        path = filedialog.askopenfilename(title="Select Source Image", filetypes=[("Images", "*.png;*.jpg;*.jpeg"), ("All", "*.*")])
+        if path:
+            self.stego_src_entry.delete(0, tk.END)
+            self.stego_src_entry.insert(0, path)
+
+    def browse_stego_output(self):
+        path = filedialog.asksaveasfilename(title="Save Encoded Image", defaultextension=".png", filetypes=[("PNG Image", "*.png")])
+        if path:
+            self.stego_out_entry.delete(0, tk.END)
+            self.stego_out_entry.insert(0, path)
+
+    def browse_stego_target(self):
+        path = filedialog.askopenfilename(title="Select Encoded Image", filetypes=[("PNG Images", "*.png"), ("All", "*.*")])
+        if path:
+            self.stego_tgt_entry.delete(0, tk.END)
+            self.stego_tgt_entry.insert(0, path)
+
+    def run_hide_message(self):
+        src = self.stego_src_entry.get().strip()
+        msg = self.stego_msg_text.get("1.0", tk.END).strip()
+        out = self.stego_out_entry.get().strip()
+        
+        if not src or not msg:
+            messagebox.showerror("Error", "Please provide a source image and message.")
+            return
+        
+        # Auto-generate output path if not specified
+        if not out:
+            import os
+            base_name = os.path.splitext(src)[0]
+            out = f"{base_name}_encoded.png"
+            self.stego_out_entry.delete(0, tk.END)
+            self.stego_out_entry.insert(0, out)
+            
+        self.start_hd_spinner()
+        self.update_hd_status("🔒 Hiding message in image...")
+        
+        def hide_thread():
+            try:
+                res = self.steganography_tool.hide_message(src, msg, out)
+                if res['success']:
+                    self.root.after(0, lambda: messagebox.showinfo("Success", res['message']))
+                    self.root.after(0, lambda: self.update_dashboard_activity(f"Steganography: Hidden message in {os.path.basename(out)}"))
+                else:
+                    self.root.after(0, lambda: messagebox.showerror("Error", res['message']))
+            except Exception as e:
+                 self.root.after(0, lambda: messagebox.showerror("Error", str(e)))
+            finally:
+                self.root.after(0, lambda: self.stop_hd_spinner())
+                self.root.after(0, lambda: self.update_hd_status("🟢 Ready"))
+        
+        threading.Thread(target=hide_thread, daemon=True).start()
+
+    def run_extract_message(self):
+        tgt = self.stego_tgt_entry.get().strip()
+        
+        if not tgt:
+            messagebox.showerror("Error", "Please select an encoded image.")
+            return
+            
+        self.start_hd_spinner()
+        self.update_hd_status("🔓 Extracting message from image...")
+        self.stego_results.delete("1.0", tk.END)
+        
+        def extract_thread():
+            try:
+                res = self.steganography_tool.extract_message(tgt)
+                if res['success']:
+                    self.root.after(0, lambda: self.stego_results.insert(tk.END, res['data']))
+                    self.root.after(0, lambda: self.update_dashboard_activity(f"Steganography: Extracted message from {os.path.basename(tgt)}"))
+                    self.root.after(0, lambda: messagebox.showinfo("Success", "Message extracted!"))
+                else:
+                    self.root.after(0, lambda: messagebox.showerror("Error", res['message']))
+            except Exception as e:
+                 self.root.after(0, lambda: messagebox.showerror("Error", str(e)))
+            finally:
+                self.root.after(0, lambda: self.stop_hd_spinner())
+                self.root.after(0, lambda: self.update_hd_status("🟢 Ready"))
+        
+        threading.Thread(target=extract_thread, daemon=True).start()
+
     def create_hd_status_bar(self):
         """Create status bar with improved visual design"""
         self.status_frame = tk.Frame(
@@ -2680,13 +3025,6 @@ class CyberSecurityTool:
             self.file_path_entry.delete(0, tk.END)
             self.file_path_entry.insert(0, filename)
 
-    def browse_aes_file(self):
-        """Browse for a file to encrypt or decrypt with AES."""
-        filename = filedialog.askopenfilename(title="Select File for AES Encryption/Decryption")
-        if filename:
-            self.aes_file_entry.delete(0, tk.END)
-            self.aes_file_entry.insert(0, filename)
-
     def update_hd_status(self, message):
         self.status_var.set(message)
         self.root.update_idletasks()
@@ -2878,62 +3216,6 @@ class CyberSecurityTool:
             fg=color,
         )
 
-    def run_aes_encrypt(self):
-        """Encrypt the selected file with AES using the given password."""
-        file_path = self.aes_file_entry.get().strip()
-        password = self.aes_password_entry.get().strip()
-
-        if not file_path:
-            messagebox.showerror("Error", "Please choose a file to encrypt")
-            return
-        if not password:
-            messagebox.showerror("Error", "Please enter a password for AES encryption")
-            return
-
-        self.aes_results.delete(1.0, tk.END)
-        self.update_hd_status("🟡 Encrypting file with AES...")
-
-        def enc_thread():
-            try:
-                res = encrypt_file(file_path, password)
-                msg = res.message
-                if res.success:
-                    activity = f"AES encryption completed for {os.path.basename(file_path)} at {datetime.now().strftime('%H:%M:%S')}"
-                    self.root.after(0, lambda: self.update_dashboard_activity(activity))
-                self.root.after(0, lambda: self.aes_results.insert(tk.END, msg))
-            finally:
-                self.root.after(0, lambda: self.update_hd_status("🟢 AES encryption finished"))
-
-        threading.Thread(target=enc_thread, daemon=True).start()
-
-    def run_aes_decrypt(self):
-        """Decrypt the selected AES-encrypted file using the given password."""
-        file_path = self.aes_file_entry.get().strip()
-        password = self.aes_password_entry.get().strip()
-
-        if not file_path:
-            messagebox.showerror("Error", "Please choose a file to decrypt")
-            return
-        if not password:
-            messagebox.showerror("Error", "Please enter a password for AES decryption")
-            return
-
-        self.aes_results.delete(1.0, tk.END)
-        self.update_hd_status("🟡 Decrypting file with AES...")
-
-        def dec_thread():
-            try:
-                res = decrypt_file(file_path, password)
-                msg = res.message
-                if res.success:
-                    activity = f"AES decryption completed for {os.path.basename(file_path)} at {datetime.now().strftime('%H:%M:%S')}"
-                    self.root.after(0, lambda: self.update_dashboard_activity(activity))
-                self.root.after(0, lambda: self.aes_results.insert(tk.END, msg))
-            finally:
-                self.root.after(0, lambda: self.update_hd_status("🟢 AES decryption finished"))
-
-        threading.Thread(target=dec_thread, daemon=True).start()
-
     def run_breach_check(self):
         """Check if the entered email has been found in data breaches."""
         email = self.breach_email_entry.get().strip()
@@ -3088,7 +3370,8 @@ class CyberSecurityTool:
             'hash',
             'password',
             'aes',
-            'breach'
+            'breach',
+            'steganography'
         ]
         self.update_hd_status(f"🟢 Viewing: {tab_names[current_tab]}")
     
@@ -3101,6 +3384,7 @@ class CyberSecurityTool:
             getattr(self, "password_results", None),
             getattr(self, "aes_results", None),
             getattr(self, "breach_results", None),
+            getattr(self, "steganography_results", None),
         ]
         for widget in widgets:
             if widget is not None:
@@ -3110,7 +3394,7 @@ class CyberSecurityTool:
     def export_results(self):
         """Export current tab results to file"""
         current_tab = self.notebook.index(self.notebook.select())
-        tab_names = ["dashboard", "network", "ports", "hash", "password", "aes", "breach"]
+        tab_names = ["dashboard", "network", "ports", "hash", "password", "aes", "breach", "steganography"]
 
         filename = filedialog.asksaveasfilename(
             defaultextension=".txt",
@@ -3135,6 +3419,7 @@ class CyberSecurityTool:
                         4: getattr(self, 'password_results', None),
                         5: getattr(self, 'aes_results', None),
                         6: getattr(self, 'breach_results', None),
+                        7: getattr(self, 'stego_results', None),
                     }
 
                     results_widget = widget_map.get(current_tab, None)
